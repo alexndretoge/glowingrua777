@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fragmentos da Rua 777 — Versão Funcional</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;color:#e0e0e0;font-family:'Inter',sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;overflow:hidden}
+#root{position:relative;width:1280px;height:720px}
+.game-wrapper{position:relative;width:100%;height:100%;box-shadow:0 0 120px rgba(106,76,147,0.6);border:3px solid #404040;border-radius:8px;overflow:hidden;background:#0a0a1a}
+.game-canvas{display:block;width:100%;height:100%}
+.ui-layer{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:10}
+.ui-layer>*{pointer-events:auto}
+.hud{position:absolute;top:15px;left:20px;right:20px;display:flex;justify-content:space-between;gap:10px;opacity:0;transition:opacity 0.5s}
+.hud.visible{opacity:1}
+.hud-panel{background:rgba(0,0,0,0.85);padding:10px 18px;border-radius:6px;border:2px solid;font-family:'Cormorant Garamond',serif;font-size:1em;backdrop-filter:blur(4px);white-space:nowrap}
+.hud-panel.clues{border-color:#00f0ff;color:#00f0ff}
+.hud-panel.trust{border-color:#8a6bbf;color:#8a6bbf}
+.hud-panel.suspicion{border-color:#ff4444;color:#ff4444}
+.hud-panel.chapter{border-color:#d4af37;color:#d4af37}
+.hud-panel span{font-weight:700;font-size:1.15em;margin-left:6px}
+.dialogue-box{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);background:rgba(8,8,18,0.97);padding:28px 45px;border-radius:12px;border:2px solid #6a4c93;max-width:1000px;width:92%;box-shadow:0 0 60px rgba(106,76,147,0.5);backdrop-filter:blur(8px);animation:fadeIn 0.3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+.speaker-name{font-family:'Cormorant Garamond',serif;font-size:1.6em;color:#d4af37;margin-bottom:12px;font-weight:700;letter-spacing:1px}
+.dialogue-text{font-size:1.1em;line-height:1.85;color:#d0d0d0;font-style:italic;min-height:60px}
+.dialogue-text.narration{color:#a0a0a0}
+.dialogue-text.highlight{color:#ff4444;font-weight:700}
+.dialogue-continue{margin-top:10px;font-size:0.85em;color:#6a4c93;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.choices{margin-top:18px;display:flex;flex-direction:column;gap:10px}
+.choice-btn{background:linear-gradient(135deg,#6a4c93,#8a6bbf);color:white;border:none;padding:14px 25px;border-radius:6px;cursor:pointer;font-size:1em;font-family:'Inter',sans-serif;transition:all 0.3s;text-align:left;box-shadow:0 4px 15px rgba(106,76,147,0.3)}
+.choice-btn:hover{transform:translateX(8px);box-shadow:0 6px 25px rgba(106,76,147,0.6);background:linear-gradient(135deg,#8a6bbf,#a88bcf)}
+.choice-effect{font-size:0.75em;opacity:0.75;margin-top:4px;color:#ffd700}
+.notification{position:absolute;top:80px;right:25px;background:rgba(212,175,55,0.15);border:2px solid #d4af37;padding:12px 22px;border-radius:8px;color:#d4af37;font-weight:600;backdrop-filter:blur(4px);animation:slideIn 0.5s ease}
+@keyframes slideIn{from{transform:translateX(300px);opacity:0}to{transform:translateX(0);opacity:1}}
+.echo-indicator{position:absolute;top:70px;left:50%;transform:translateX(-50%);background:rgba(0,240,255,0.12);border:2px solid #00f0ff;padding:8px 25px;border-radius:20px;color:#00f0ff;font-weight:700;font-size:1em;backdrop-filter:blur(4px);animation:echoPulse 2s infinite}
+@keyframes echoPulse{0%,100%{box-shadow:0 0 15px rgba(0,240,255,0.4)}50%{box-shadow:0 0 35px rgba(0,240,255,0.8)}}
+.controls-bar{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.9);padding:10px 22px;border-radius:6px;font-size:0.78em;border:1px solid #6a4c93;color:#8a6bbf;opacity:0;transition:opacity 0.5s}
+.controls-bar.visible{opacity:1}
+.controls-bar span{display:inline-block;margin:0 5px;background:rgba(106,76,147,0.3);padding:2px 7px;border-radius:3px;color:#a88bcf;font-weight:700}
+.title-screen{position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(180deg,#050510 0%,#0a0a20 50%,#050510 100%);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:100}
+.title-screen h1{font-family:'Cormorant Garamond',serif;font-size:4.5em;background:linear-gradient(135deg,#d4af37,#8a6bbf,#00f0ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:15px;animation:titleGlow 4s ease-in-out infinite;letter-spacing:2px}
+@keyframes titleGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.4)}}
+.title-screen .subtitle{font-family:'Cormorant Garamond',serif;font-size:1.4em;color:#a0a0a0;font-style:italic;margin-bottom:10px}
+.title-screen .tagline{font-size:0.95em;color:#6a4c93;margin-bottom:50px;letter-spacing:3px;text-transform:uppercase}
+.start-btn{background:linear-gradient(135deg,#6a4c93,#8a6bbf);color:white;border:none;padding:18px 55px;border-radius:8px;cursor:pointer;font-size:1.2em;font-family:'Cormorant Garamond',serif;font-weight:700;transition:all 0.3s;box-shadow:0 10px 40px rgba(106,76,147,0.5);letter-spacing:2px}
+.start-btn:hover{transform:translateY(-4px) scale(1.05);box-shadow:0 15px 50px rgba(106,76,147,0.8)}
+.chapter-title{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Cormorant Garamond',serif;font-size:3em;color:#d4af37;text-shadow:0 0 40px rgba(212,175,55,0.6);text-align:center;pointer-events:none;animation:fadeInOut 4s ease}
+.chapter-title .chapter-num{display:block;font-size:0.5em;color:#8a6bbf;letter-spacing:5px;margin-bottom:10px;text-transform:uppercase}
+@keyframes fadeInOut{0%{opacity:0;transform:translate(-50%,-50%) scale(0.8)}20%{opacity:1;transform:translate(-50%,-50%) scale(1)}80%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(0.8)}}
+.end-screen{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(5,5,16,0.98);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:200;text-align:center;padding:40px}
+.end-screen h2{font-family:'Cormorant Garamond',serif;font-size:3em;background:linear-gradient(135deg,#d4af37,#8a6bbf);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:20px}
+.end-screen p{font-size:1.1em;line-height:1.8;color:#a0a0a0;max-width:700px;margin:10px 0;font-style:italic}
+.final-stats{margin:30px 0;padding:20px;border:1px solid #6a4c93;border-radius:8px;background:rgba(106,76,147,0.1)}
+.final-stats div{margin:8px 0;color:#d4af37}
+.restart-btn{margin-top:30px;background:linear-gradient(135deg,#6a4c93,#8a6bbf);color:white;border:none;padding:15px 40px;border-radius:8px;cursor:pointer;font-size:1.1em;font-family:'Cormorant Garamond',serif;font-weight:700;transition:all 0.3s}
+.restart-btn:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(106,76,147,0.6)}
+.tutorial{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(8,8,18,0.98);padding:40px 60px;border-radius:15px;border:2px solid #d4af37;max-width:700px;z-index:150;text-align:center;box-shadow:0 0 60px rgba(212,175,55,0.4)}
+.tutorial h3{font-family:'Cormorant Garamond',serif;font-size:2em;color:#d4af37;margin-bottom:20px}
+.tutorial-step{margin:15px 0;padding:12px;background:rgba(106,76,147,0.1);border-radius:6px;text-align:left}
+.tutorial-step .key{display:inline-block;background:#6a4c93;color:white;padding:3px 10px;border-radius:4px;font-weight:700;margin-right:10px;min-width:40px;text-align:center}
+.tutorial-step .desc{color:#a0a0a0}
+.tutorial-btn{margin-top:25px;background:linear-gradient(135deg,#6a4c93,#8a6bbf);color:white;border:none;padding:12px 35px;border-radius:6px;cursor:pointer;font-size:1em;font-family:'Inter',sans-serif;font-weight:600;transition:all 0.3s}
+.tutorial-btn:hover{transform:scale(1.05);box-shadow:0 5px 20px rgba(106,76,147,0.5)}
+.interaction-hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.9);border:2px solid #d4af37;padding:15px 30px;border-radius:8px;color:#d4af37;font-weight:600;font-size:1.1em;animation:fadeInOut 3s ease;pointer-events:none;z-index:50}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } = React;
+
+const GameContext = createContext(null);
+
+// ============ AUDIO ============
+function useAudio() {
+  const audioCtxRef = useRef(null);
+  useEffect(() => {
+    audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+  }, []);
+  const playTone = useCallback((freq, duration, type = 'sine', volume = 0.2) => {
+    if (!audioCtxRef.current) return;
+    try {
+      const osc = audioCtxRef.current.createOscillator();
+      const gain = audioCtxRef.current.createGain();
+      osc.connect(gain); gain.connect(audioCtxRef.current.destination);
+      osc.frequency.value = freq; osc.type = type;
+      gain.gain.setValueAtTime(volume, audioCtxRef.current.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtxRef.current.currentTime + duration);
+      osc.start(audioCtxRef.current.currentTime);
+      osc.stop(audioCtxRef.current.currentTime + duration);
+    } catch(e) {}
+  }, []);
+  const sfx = useCallback((name) => {
+    switch(name) {
+      case 'step': playTone(120+Math.random()*40, 0.08, 'triangle', 0.08); break;
+      case 'clue': playTone(800,0.12);setTimeout(()=>playTone(1200,0.18),80);setTimeout(()=>playTone(1600,0.25),180); break;
+      case 'echo': playTone(300,0.6,'sine',0.15);setTimeout(()=>playTone(500,0.6,'sine',0.15),150);setTimeout(()=>playTone(800,0.8,'sine',0.15),350); break;
+      case 'dialogue': playTone(280+Math.random()*80,0.04,'square',0.04); break;
+      case 'choice': playTone(500,0.08);setTimeout(()=>playTone(700,0.12),60); break;
+      case 'tension': playTone(80,1.2,'sawtooth',0.12); break;
+      case 'heartbeat': playTone(60,0.15,'sine',0.25);setTimeout(()=>playTone(60,0.15,'sine',0.25),200); break;
+      case 'interact': playTone(600,0.1);setTimeout(()=>playTone(800,0.15),80); break;
+    }
+  }, [playTone]);
+  return { sfx };
+}
+
+// ============ INPUT ============
+function useInput() {
+  const keysRef = useRef({});
+  useEffect(() => {
+    const down = (e) => { keysRef.current[e.key.toLowerCase()] = true; if (e.key === ' ') e.preventDefault(); };
+    const up = (e) => { keysRef.current[e.key.toLowerCase()] = false; };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
+  }, []);
+  return keysRef;
+}
+
+// ============ PARTICLE ============
+class Particle {
+  constructor(x, y, color, opt = {}) {
+    this.x = x; this.y = y;
+    this.vx = opt.vx !== undefined ? opt.vx : (Math.random()-0.5)*5;
+    this.vy = opt.vy !== undefined ? opt.vy : (Math.random()-0.5)*5;
+    this.ax = opt.ax || 0; this.ay = opt.ay || 0.08;
+    this.friction = opt.friction || 0.98;
+    this.life = 1; this.decay = opt.decay || 0.015;
+    this.color = color;
+    this.size = opt.size || (Math.random()*4+2);
+    this.maxSize = this.size;
+    this.shape = opt.shape || 'circle';
+    this.rotation = Math.random() * Math.PI * 2;
+    this.rotSpeed = (Math.random()-0.5)*0.2;
+    this.glow = opt.glow || false;
+    this.trail = opt.trail || false;
+    this.trailPoints = [];
+  }
+  update() {
+    if (this.trail) { this.trailPoints.push({x:this.x,y:this.y,life:this.life}); if(this.trailPoints.length>8)this.trailPoints.shift(); }
+    this.vx += this.ax; this.vy += this.ay;
+    this.vx *= this.friction; this.vy *= this.friction;
+    this.x += this.vx; this.y += this.vy;
+    this.rotation += this.rotSpeed;
+    this.life -= this.decay;
+    this.size = this.maxSize * Math.max(0, this.life);
+  }
+  draw(ctx) {
+    if (this.life <= 0) return;
+    if (this.trail && this.trailPoints.length > 1) {
+      for (let i = 0; i < this.trailPoints.length - 1; i++) {
+        const p = this.trailPoints[i], n = this.trailPoints[i+1];
+        ctx.strokeStyle = this.color; ctx.globalAlpha = (i/this.trailPoints.length)*this.life*0.4;
+        ctx.lineWidth = this.size * 0.4;
+        ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(n.x,n.y); ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = this.life;
+    if (this.glow) { ctx.shadowBlur = 15; ctx.shadowColor = this.color; }
+    ctx.fillStyle = this.color;
+    ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.rotation);
+    if (this.shape === 'circle') { ctx.beginPath(); ctx.arc(0,0,this.size,0,Math.PI*2); ctx.fill(); }
+    else if (this.shape === 'star') { drawStar(ctx,0,0,5,this.size,this.size/2); }
+    else if (this.shape === 'square') { ctx.fillRect(-this.size/2,-this.size/2,this.size,this.size); }
+    ctx.restore();
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+  }
+}
+
+function drawStar(ctx, cx, cy, spikes, outer, inner) {
+  let rot = Math.PI/2*3; const step = Math.PI/spikes;
+  ctx.beginPath(); ctx.moveTo(cx, cy-outer);
+  for (let i = 0; i < spikes; i++) {
+    let x = cx + Math.cos(rot)*outer, y = cy + Math.sin(rot)*outer; ctx.lineTo(x,y); rot += step;
+    x = cx + Math.cos(rot)*inner; y = cy + Math.sin(rot)*inner; ctx.lineTo(x,y); rot += step;
+  }
+  ctx.lineTo(cx, cy-outer); ctx.closePath(); ctx.fill();
+}
+
+// ============ GAME DATA ============
+const SCENES = {
+  home_arrival: {
+    name: 'Chegada em Casa', chapter: 1, width: 2000,
+    nilaStart: {x:100, y:520},
+    objects: [{id:'house_door',x:900,y:400,w:80,h:120,type:'trigger',name:'Porta de Casa',nextScene:'home_interior'}],
+    npcs: [],
+    introDialogue: [
+      {s:'',t:'A viagem foi longa. Nila olha pela janela do carro enquanto a casa nova surge à frente.',narration:true},
+      {s:'',t:'Uma casa grande, com quintal enorme e uma piscina. Tudo parece... perfeito demais.',narration:true},
+      {s:'Nila',t:'(Pensando) Estranho... papai era só um jornalista comum. Como conseguiu essa casa?'},
+      {s:'',t:'💡 DICA: Caminhe até a porta da casa e pressione E para interagir.',narration:true}
+    ]
+  },
+  home_interior: {
+    name: 'Interior da Casa', chapter: 1, width: 1400,
+    nilaStart: {x:200, y:500},
+    objects: [{id:'bedroom_door',x:1100,y:400,w:70,h:110,type:'trigger',name:'Quarto',nextScene:'morning_home'}],
+    npcs: [
+      {id:'anderson',x:500,y:480,name:'Anderson',emotion:'neutral',dialogue:'anderson_welcome'},
+      {id:'nina',x:600,y:480,name:'Nina',emotion:'warm',dialogue:'nina_welcome'}
+    ],
+    introDialogue: [
+      {s:'Anderson',t:'Bem-vinda ao nosso novo lar, filha! Não é maravilhoso?'},
+      {s:'Nina',t:'Fiz um jantar especial pra comemorar o novo emprego do papai!'},
+      {s:'Nila',t:'...Obrigada.'},
+      {s:'',t:'💡 DICA: Converse com seus pais (E) e depois vá para o quarto.',narration:true}
+    ]
+  },
+  morning_home: {
+    name: 'Manhã em Casa', chapter: 2, width: 1400,
+    nilaStart: {x:600, y:500},
+    objects: [
+      {id:'letter',x:400,y:520,w:50,h:35,type:'clue',name:'Carta do Pai',clue:'carta_pai',
+        dialogue:[
+          {s:'',t:'Uma carta na mesa da cozinha. Nila pega e lê.',narration:true},
+          {s:'Carta',t:'"OI FILHA! Aqui é o PAIPAI. Tive que sair cedo pro trabalho. Preparei um lanche pra você. Tenha um ótimo dia! Beijinhos, PAPAI"'}
+        ]},
+      {id:'front_door',x:100,y:420,w:70,h:110,type:'trigger',name:'Sair de Casa',nextScene:'street_to_school'}
+    ],
+    npcs: [],
+    introDialogue: [
+      {s:'',t:'7:00 da manhã. Nila acorda.',narration:true},
+      {s:'Nila',t:'Ahh... hoje é o dia. Tô nervosa, mas vamos lá.'},
+      {s:'',t:'💡 DICA: Pegue a carta (E) e saia pela porta da frente.',narration:true}
+    ]
+  },
+  street_to_school: {
+    name: 'Caminho para a Escola', chapter: 2, width: 2400,
+    nilaStart: {x:100, y:520},
+    objects: [
+      {id:'anderson_cityhall',x:1250,y:480,w:40,h:75,type:'npc',name:'Pai',
+        dialogue:[
+          {s:'',t:'Seu pai, Anderson, vestido com um terno elegante.',narration:true},
+          {s:'',t:'Ao lado dele, um homem de olhar profundo e frio.',narration:true},
+          {s:'Nila',t:'(Pensando) Quem é aquele homem? Nunca vi ele com papai antes...'}
+        ]},
+      {id:'school_door',x:2200,y:420,w:80,h:120,type:'trigger',name:'Entrada da Escola',nextScene:'school_yard'}
+    ],
+    npcs: [],
+    introDialogue: [
+      {s:'',t:'Nila caminha com a mochila nas costas.',narration:true},
+      {s:'',t:'Há pessoas pela rua. Mas elas não param de encarar.',narration:true},
+      {s:'Nila',t:'(Pensando) Por que todo mundo tá me olhando? Ah, foda-se.'},
+      {s:'',t:'💡 DICA: Caminhe até a direita. Na prefeitura, interaja com seu pai (E). Depois vá para a escola.',narration:true}
+    ]
+  },
+  school_yard: {
+    name: 'Pátio da Escola', chapter: 3, width: 1800,
+    nilaStart: {x:100, y:520},
+    objects: [
+      {id:'classroom_door',x:1600,y:420,w:80,h:120,type:'trigger',name:'Sala de Aula',nextScene:'classroom'}
+    ],
+    npcs: [{id:'diretor',x:900,y:480,name:'Diretor Rodovo',emotion:'serious',dialogue:'diretor_meet'}],
+    introDialogue: [
+      {s:'Diretor Rodovo',t:'Bem-vindos a todos! Que este seja um ano de paz.'},
+      {s:'Diretor Rodovo',t:'Vamos reforçar a segurança para que NÃO HAJA MAIS desaparecimentos.'},
+      {s:'',t:'Um murmúrio percorre o pátio. Nila sente um calafrio.',narration:true},
+      {s:'Nila',t:'(Pensando) Desaparecimentos? Meus pais disseram que aqui era o lugar "perfeito"...'},
+      {s:'',t:'💡 DICA: Fale com o Diretor (E) e depois entre na sala de aula.',narration:true}
+    ]
+  },
+  classroom: {
+    name: 'Sala de Aula', chapter: 4, width: 1400,
+    nilaStart: {x:150, y:520},
+    objects: [
+      {id:'memorial_table',x:500,y:480,w:120,h:60,type:'clue',name:'Mesa Memorial',clue:'fotos_desaparecidos',
+        dialogue:[
+          {s:'',t:'Uma mesa com flores e fotos. Nila se aproxima.',narration:true},
+          {s:'',t:'Três rostos sorridentes congelados no tempo.',narration:true},
+          {s:'',t:'BRENDA. ALISSON. FELIPE.',narration:true,highlight:true},
+          {s:'Nila',t:'(Pensando) Então é verdade... alunos desapareceram.'}
+        ]},
+      {id:'paper',x:700,y:540,w:35,h:25,type:'clue',name:'Bilhete Misterioso',clue:'bilhete_anonimo',
+        dialogue:[
+          {s:'',t:'Alguém jogou um papel. Nila pega e lê:',narration:true},
+          {s:'',t:'"AINDA VOCÊ NÃO SABE DE NADA!"',narration:true,highlight:true},
+          {s:'Nila',t:'(Pensando) O que... quem escreveu isso?'}
+        ]},
+      {id:'patio_door',x:1200,y:420,w:80,h:120,type:'trigger',name:'Pátio',nextScene:'patio_izabel'}
+    ],
+    npcs: [{id:'thalyta',x:900,y:500,name:'Thalyta',emotion:'neutral',dialogue:'thalyta_intro'}],
+    introDialogue: [
+      {s:'Professora Katia',t:'Bom dia a todos! Sou a professora Katia.'},
+      {s:'',t:'💡 DICA: Examine a mesa com flores e o papel no chão (E). Depois vá para o pátio.',narration:true}
+    ]
+  },
+  patio_izabel: {
+    name: 'Pátio — Encontro com Izabel', chapter: 5, width: 1400,
+    nilaStart: {x:200, y:520},
+    objects: [{id:'going_home_door',x:1200,y:420,w:80,h:120,type:'trigger',name:'Sair da Escola',nextScene:'going_home'}],
+    npcs: [{id:'izabel',x:750,y:480,name:'Izabel',emotion:'mysterious',dialogue:'izabel_reveal'}],
+    introDialogue: [
+      {s:'',t:'Nila sai para o intervalo. Uma menina a aborda.',narration:true},
+      {s:'Izabel',t:'Oi! Eu sou a pessoa que mandou a carta pra você.'},
+      {s:'',t:'💡 DICA: Converse com Izabel (E) para descobrir a verdade.',narration:true}
+    ]
+  },
+  going_home: {
+    name: 'Voltando para Casa', chapter: 6, width: 2000,
+    nilaStart: {x:100, y:520},
+    objects: [{id:'home_door_return',x:1700,y:420,w:80,h:120,type:'trigger',name:'Porta de Casa',nextScene:'father_arrival'}],
+    npcs: [{id:'izabel_walk',x:300,y:520,name:'Izabel',emotion:'neutral',dialogue:'izabel_walk_home'}],
+    introDialogue: [
+      {s:'Izabel',t:'Oi Nila! Quer ir comigo? Não podemos andar sozinhas.'},
+      {s:'Nila',t:'Claro. Eu moro na Rua 777.'},
+      {s:'Izabel',t:'Coincidência! Eu também!'},
+      {s:'',t:'💡 DICA: Converse com Izabel no caminho e vá para casa.',narration:true}
+    ]
+  },
+  father_arrival: {
+    name: 'Chegada do Pai', chapter: 7, width: 1400,
+    nilaStart: {x:600, y:520},
+    objects: [{id:'enter_house',x:1000,y:420,w:80,h:120,type:'trigger',name:'Entrar em Casa',nextScene:'dinner'}],
+    npcs: [
+      {id:'izabel_scared',x:500,y:520,name:'Izabel',emotion:'scared',dialogue:'izabel_scared'},
+      {id:'anderson_arrival',x:1000,y:500,name:'Anderson',emotion:'suspicious',dialogue:'anderson_arrival'}
+    ],
+    introDialogue: [
+      {s:'',t:'Um carro preto chega. É o pai de Nila.',narration:true},
+      {s:'Anderson',t:'Oi filha! Tudo bem? Chegou bem da escola? Vejo que fez novas amizades!'},
+      {s:'Izabel',t:'Oi senhor... meu nome é Izabel, mas pode me chamar de Iza.'},
+      {s:'Izabel',t:'E... moro naquela casa com muro alto. Foi bom conversar, mas tenho que ir. Tchau Nila!'},
+      {s:'',t:'Izabel sai apressada, quase com medo.',narration:true},
+      {s:'Anderson',t:'(Colocando a mão no ombro de Nila, forte) Então filha, quero saber TUDO do seu primeiro dia.'},
+      {s:'',t:'💡 DICA: Entre em casa para o jantar.',narration:true}
+    ]
+  },
+  dinner: {
+    name: 'O Jantar', chapter: 8, width: 1200,
+    nilaStart: {x:500, y:520},
+    objects: [],
+    npcs: [
+      {id:'anderson_dinner',x:350,y:480,name:'Anderson',emotion:'suspicious'},
+      {id:'nina_dinner',x:750,y:480,name:'Nina',emotion:'warm'}
+    ],
+    introDialogue: [
+      {s:'Nina',t:'Oi meus queridos! Tudo bem? Como foi o dia de vocês?'},
+      {s:'Anderson',t:'Foi ótimo, querida. E a Nila fez uma nova amiga, a Izabel.'},
+      {s:'Nina',t:'Que bom, filha!'},
+      {s:'',t:'O jantar transcorre em silêncio tenso. Nila observa os pais.',narration:true},
+      {s:'',t:'É agora. Ela precisa testar.',narration:true}
+    ],
+    showDinnerChoice: true
+  },
+  echo_prefeitura: {
+    name: 'Prefeitura — Modo Eco', chapter: 9, width: 1400,
+    nilaStart: {x:200, y:520},
+    objects: [
+      {id:'echo_desk',x:700,y:480,w:150,h:80,type:'clue',name:'Documentos Secretos',clue:'documentos_pai',echoOnly:true,
+        dialogue:[
+          {s:'',t:'No ECO, Nila vê documentos espalhados na mesa.',narration:true},
+          {s:'',t:'Relatórios. Fotos. Anotações com a letra do pai.',narration:true},
+          {s:'',t:'"Operação Limpeza — 6 de Novembro"',narration:true,highlight:true},
+          {s:'Nila',t:'(Pensando) Meu Deus... ele estava envolvido. Ele ENCUBRIU tudo.'}
+        ]},
+      {id:'confrontation_door',x:1200,y:420,w:80,h:120,type:'trigger',name:'Confrontar o Pai',nextScene:'confrontation',echoOnly:true}
+    ],
+    npcs: [
+      {id:'echo_anderson',x:600,y:480,name:'Eco do Pai',emotion:'cold',echoOnly:true,dialogue:'echo_father'},
+      {id:'echo_perteson',x:800,y:480,name:'Eco do Perteson',emotion:'cold',echoOnly:true,dialogue:'echo_perteson'}
+    ],
+    introDialogue: [
+      {s:'',t:'Nila não aguenta mais. Ela precisa de respostas.',narration:true},
+      {s:'',t:'Ela espera todos dormirem. E sai.',narration:true},
+      {s:'',t:'👁️ MODO ECO ATIVADO — Você está vendo o passado (6 de novembro)',narration:true},
+      {s:'',t:'💡 DICA: Examine os documentos e converse com os ecos. Depois confronte seu pai.',narration:true}
+    ],
+    forceEcho: true
+  },
+  confrontation: {
+    name: 'O Confronto', chapter: 10, width: 1200,
+    nilaStart: {x:500, y:520},
+    objects: [],
+    npcs: [{id:'anderson_final',x:600,y:480,name:'Anderson',emotion:'angry'}],
+    introDialogue: [
+      {s:'Nila',t:'PAI. Eu sei do dia 6 de novembro.'},
+      {s:'',t:'O silêncio corta a sala como uma lâmina.',narration:true},
+      {s:'Anderson',t:'...O que você disse?'},
+      {s:'Nila',t:'Eu sei que você era jornalista. Eu sei que estava lá. Eu sei o que você fez.'},
+      {s:'Nila',t:'Brenda. Alisson. Felipe. O que aconteceu com eles?'},
+      {s:'Anderson',t:'Nila... você não entende. As coisas não são o que parecem.'},
+      {s:'Nila',t:'ENTÃO ME EXPLICA!'}
+    ],
+    showFinalChoice: true
+  }
+};
+
+const DIALOGUES = {
+  'anderson_welcome': [
+    {s:'Anderson',t:'Nila! Bem-vinda ao nosso novo lar!'},
+    {s:'Nina',t:'Que tal a casa, filha? Não é um sonho?'},
+    {s:'Nila',t:'É... é grande.'},
+    {s:'Anderson',t:'Grande? É UM PALÁCIO! Agora vamos jantar.'}
+  ],
+  'nina_welcome': [
+    {s:'Nina',t:'Oi querida! Vou fazer um jantar especial hoje!'},
+    {s:'Nila',t:'Tá bom, mãe.'}
+  ],
+  'diretor_meet': [
+    {s:'Diretor Rodovo',t:'Olá, especialmente para você, Nila.'},
+    {s:'',t:'Ele sorri. Um sorriso que não chega aos olhos.',narration:true},
+    {s:'Diretor Rodovo',t:'Cuide-se no caminho da Rua 777.'},
+    {s:'',t:'Ele entrega um cartão. O contato do investigador Perteson.',narration:true},
+    {s:'Nila',t:'(Pensando) Como ele sabe onde eu moro?'}
+  ],
+  'thalyta_intro': [
+    {s:'Thalyta',t:'Bom gente, eu sou a Thalyta, líder da turma. Vamos ficar sossegados que a professora já tá vindo.'}
+  ],
+  'izabel_reveal': [
+    {s:'Izabel',t:'Você ficou sabendo dos alunos desaparecidos, né?'},
+    {s:'Nila',t:'Vi as fotos na mesa... Brenda, Alisson e Felipe.'},
+    {s:'Izabel',t:'Eles faziam parte do acampamento da igreja. Três sumiram do nada.'},
+    {s:'Nila',t:'Mas como? Num acampamento cheio de gente?'},
+    {s:'Izabel',t:'Todo mundo diz que "se perderam na mata". Mas a trilha era segura.'},
+    {s:'Izabel',t:'E tinha um jornalista lá. Um que encobriu tudo.'},
+    {s:'Nila',t:'...Quem?'},
+    {s:'Izabel',t:'Nila... era o seu pai. Ele era jornalista antes de ser deputado.'},
+    {s:'Nila',t:'...Que dia foi isso?'},
+    {s:'Izabel',t:'6 de novembro.'},
+    {s:'',t:'O mundo de Nila para.',narration:true},
+    {s:'Nila',t:'...Nesse dia, meu pai não estava em casa. Ele só voltou no dia seguinte de manhã.'},
+    {s:'Izabel',t:'O que você vai fazer agora?'},
+    {s:'Nila',t:'Sinceramente... eu não sei. Mas vou descobrir a verdade.'}
+  ],
+  'izabel_walk_home': [
+    {s:'Izabel',t:'Moro aqui desde que nasci. Meus pais amam essa cidade. Mas aqui parece um túmulo.'},
+    {s:'Izabel',t:'Aquela casa... era do ex-deputado. Ele sumiu. Literalmente. E as coisas dele também.'},
+    {s:'Nila',t:'...Obrigada por tudo, Iza.'},
+    {s:'Izabel',t:'Cuidado, Nila. Essa cidade não é o que parece.'}
+  ],
+  'izabel_scared': [
+    {s:'',t:'Izabel vê o carro de Anderson chegar. Ela empalidece.',narration:true},
+    {s:'Izabel',t:'(Sussurrando) Nila... eu preciso ir. Sua mãe tá me esperando. Tchau.'}
+  ],
+  'anderson_arrival': [
+    {s:'Anderson',t:'Então filha, quero saber TUDO do seu primeiro dia.'},
+    {s:'',t:'A mão dele no ombro de Nila aperta um pouco forte demais.',narration:true}
+  ],
+  'echo_father': [
+    {s:'',t:'No ECO, Nila vê o pai conversando com Perteson.',narration:true},
+    {s:'Eco do Anderson',t:'Precisamos encobrir isso, Perteson. Não pode vir à tona.'},
+    {s:'Eco do Perteson',t:'Já está feito, deputado. Os corpos estão na floresta.'},
+    {s:'Eco do Anderson',t:'Ninguém pode saber. Minha carreira... minha família...'},
+    {s:'Nila',t:'(Pensando, em choque) NÃO...'}
+  ],
+  'echo_perteson': [
+    {s:'Eco do Perteson',t:'Os três alunos... eles viram demais no acampamento.'},
+    {s:'Eco do Perteson',t:'O jornalista — o Anderson — cuidou da imprensa. Eu cuido do resto.'},
+    {s:'Nila',t:'(Pensando) Eles mataram Brenda, Alisson e Felipe...'}
+  ]
+};
+
+// ============ COMPONENTS ============
+function HUD({ clues, trust, suspicion, chapter, visible }) {
+  return (
+    <div className={`hud ${visible ? 'visible' : ''}`}>
+      <div className="hud-panel clues">📋 Pistas: <span>{clues.length}</span></div>
+      <div className="hud-panel trust">💜 Confiança: <span>{trust}</span>%</div>
+      <div className="hud-panel suspicion">⚠️ Suspeita: <span>{suspicion}</span>%</div>
+      <div className="hud-panel chapter">📖 <span>{chapter}</span></div>
+    </div>
+  );
+}
+
+function DialogueBox({ speaker, text, narration, highlight, onAdvance, choices, onChoice, isTyping }) {
+  const { sfx } = useContext(GameContext);
+  return (
+    <div className="dialogue-box" onClick={!choices && !isTyping ? onAdvance : undefined}>
+      <div className="speaker-name">{speaker}</div>
+      <div className={`dialogue-text ${narration ? 'narration' : ''} ${highlight ? 'highlight' : ''}`}>
+        {text}
+      </div>
+      {!isTyping && !choices && <div className="dialogue-continue">▼ Clique ou pressione ESPAÇO para continuar</div>}
+      {choices && (
+        <div className="choices">
+          {choices.map((choice, i) => (
+            <button key={i} className="choice-btn" onClick={() => { sfx('choice'); onChoice(choice); }}>
+              {choice.text}
+              {choice.effect && <div className="choice-effect">{choice.effect}</div>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TitleScreen({ onStart }) {
+  return (
+    <div className="title-screen">
+      <h1>Fragmentos da Rua 777</h1>
+      <div className="subtitle">Uma história de mistério, verdade e escolhas</div>
+      <div className="tagline">O que você faria pela verdade?</div>
+      <button className="start-btn" onClick={onStart}>INICIAR JORNADA</button>
+    </div>
+  );
+}
+
+function Tutorial({ onComplete }) {
+  return (
+    <div className="tutorial">
+      <h3>📖 Como Jogar</h3>
+      <div className="tutorial-step">
+        <span className="key">WASD</span>
+        <span className="desc">Mover Nila (use as setas também)</span>
+      </div>
+      <div className="tutorial-step">
+        <span className="key">SHIFT</span>
+        <span className="desc">Correr (segure enquanto anda)</span>
+      </div>
+      <div className="tutorial-step">
+        <span className="key">E</span>
+        <span className="desc">Interagir com pessoas e objetos próximos</span>
+      </div>
+      <div className="tutorial-step">
+        <span className="key">Q</span>
+        <span className="desc">Ativar Modo ECO (ver o passado)</span>
+      </div>
+      <div className="tutorial-step">
+        <span className="key">ESPAÇO</span>
+        <span className="desc">Avançar diálogos</span>
+      </div>
+      <div className="tutorial-step" style={{marginTop:'20px',background:'rgba(212,175,55,0.1)'}}>
+        <span className="desc">💡 <strong>Dica:</strong> Quando estiver perto de alguém ou algo interativo, aparecerá um indicador <strong>[E]</strong> dourado. Aproxime-se e pressione E!</span>
+      </div>
+      <button className="tutorial-btn" onClick={onComplete}>Entendi! Vamos jogar</button>
+    </div>
+  );
+}
+
+function EndScreen({ ending, clues, trust, suspicion, choicesMade, onRestart }) {
+  const endings = {
+    justice: {
+      title: 'Final: Justiça',
+      text: 'Nila denunciou o pai. Anderson foi preso. A verdade veio à tona. Brenda, Alisson e Felipe tiveram seus nomes limpos. Nila perdeu a família, mas ganhou sua consciência. Izabel esteve ao lado dela em cada momento. A Rua 777 nunca mais foi a mesma.'
+    },
+    emotional: {
+      title: 'Final: Verdade Dolorosa',
+      text: 'Anderson confessou tudo, em lágrimas. Disse que foi coagido. Que fez para proteger a família. Nila não sabe se perdoa. Talvez um dia. Izabel a ajuda a processar tudo. A verdade dói, mas liberta.'
+    },
+    accomplice: {
+      title: 'Final: Cumplicidade',
+      text: 'Nila guardou o segredo. Anderson continuou deputado. A vida seguiu "normal". Mas Nila carrega o peso. Cada olhar no espelho é um lembrete. Izabel se afasta, decepcionada. A Rua 777 guarda seus segredos.'
+    }
+  };
+  const e = endings[ending];
+  return (
+    <div className="end-screen">
+      <h2>{e.title}</h2>
+      <p>{e.text}</p>
+      <div className="final-stats">
+        <div>📋 Pistas Coletadas: {clues.length}</div>
+        <div>💜 Confiança Final: {trust}%</div>
+        <div>⚠️ Suspeita Final: {suspicion}%</div>
+        <div>🎭 Escolhas Feitas: {choicesMade.length}</div>
+      </div>
+      <button className="restart-btn" onClick={onRestart}>Jogar Novamente</button>
+    </div>
+  );
+}
+
+function Notification({ message }) {
+  if (!message) return null;
+  return <div className="notification">{message}</div>;
+}
+
+function ChapterTitle({ num, text }) {
+  if (!text) return null;
+  return (
+    <div className="chapter-title">
+      <span className="chapter-num">{num}</span>
+      {text}
+    </div>
+  );
+}
+
+function EchoIndicator({ active }) {
+  if (!active) return null;
+  return <div className="echo-indicator">👁️ MODO ECO — 6 de Novembro</div>;
+}
+
+function ControlsBar({ visible }) {
+  return (
+    <div className={`controls-bar ${visible ? 'visible' : ''}`}>
+      <span>WASD</span> Mover <span>SHIFT</span> Correr <span>E</span> Interagir <span>Q</span> Modo Eco <span>ESPAÇO</span> Diálogo
+    </div>
+  );
+}
+
+function InteractionHint({ text }) {
+  if (!text) return null;
+  return <div className="interaction-hint">{text}</div>;
+}
+
+// ============ GAME CANVAS ============
+function GameCanvas({ gameState, keysRef, sfx, emitRef, nilaPosRef, onInteract, onEcho }) {
+  const canvasRef = useRef(null);
+  const stateRef = useRef({
+    particles: [],
+    trailParticles: [],
+    bgParticles: [],
+    frameCount: 0,
+    cameraX: 0,
+    nila: {
+      x: 200, y: 500, width: 36, height: 72,
+      vx: 0, vy: 0, accel: 0.6, maxSpeed: 4.5, runSpeed: 7, friction: 0.82,
+      facing: 1, animFrame: 0, isWalking: false, isRunning: false
+    }
+  });
+  
+  useEffect(() => {
+    stateRef.current.bgParticles = [];
+    for (let i = 0; i < 80; i++) {
+      stateRef.current.bgParticles.push({
+        x: Math.random()*1280, y: Math.random()*720,
+        size: Math.random()*2.5+0.5,
+        vx: (Math.random()-0.5)*0.2, vy: (Math.random()-0.5)*0.2,
+        opacity: Math.random()*0.4+0.1,
+        color: ['#8a6bbf','#00f0ff','#d4af37'][Math.floor(Math.random()*3)],
+        phase: Math.random()*Math.PI*2
+      });
+    }
+  }, []);
+  
+  useEffect(() => {
+    emitRef.current = (x, y, color, count, opt = {}) => {
+      for (let i = 0; i < count; i++) {
+        stateRef.current.particles.push(new Particle(x, y, color, {
+          ...opt,
+          vx: opt.vx !== undefined ? opt.vx + (Math.random()-0.5)*2 : (Math.random()-0.5)*6,
+          vy: opt.vy !== undefined ? opt.vy + (Math.random()-0.5)*2 : (Math.random()-0.5)*6
+        }));
+      }
+    };
+  }, []);
+  
+  useEffect(() => {
+    if (gameState.currentScene && SCENES[gameState.currentScene]) {
+      const scene = SCENES[gameState.currentScene];
+      stateRef.current.nila.x = scene.nilaStart.x;
+      stateRef.current.nila.y = scene.nilaStart.y;
+      stateRef.current.nila.vx = 0;
+      stateRef.current.nila.vy = 0;
+      stateRef.current.particles = [];
+      stateRef.current.trailParticles = [];
+      emitRef.current(640, 360, '#d4af37', 60, {shape:'star',glow:true,trail:true,size:5,decay:0.008,gravity:false,vx:0,vy:0});
+    }
+  }, [gameState.currentScene]);
+  
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animId;
+    
+    const loop = () => {
+      const s = stateRef.current;
+      s.frameCount++;
+      
+      if (gameState.canMove && !gameState.dialogueActive) {
+        const keys = keysRef.current;
+        let inputX = 0, inputY = 0;
+        if (keys['a'] || keys['arrowleft']) inputX = -1;
+        if (keys['d'] || keys['arrowright']) inputX = 1;
+        if (keys['w'] || keys['arrowup']) inputY = -1;
+        if (keys['s'] || keys['arrowdown']) inputY = 1;
+        if (inputX !== 0 && inputY !== 0) { inputX *= 0.707; inputY *= 0.707; }
+        
+        s.nila.isRunning = keys['shift'];
+        const maxSpd = s.nila.isRunning ? s.nila.runSpeed : s.nila.maxSpeed;
+        
+        if (inputX !== 0) {
+          s.nila.vx += inputX * s.nila.accel;
+          s.nila.vx = Math.max(-maxSpd, Math.min(maxSpd, s.nila.vx));
+          s.nila.facing = inputX > 0 ? 1 : -1;
+        } else {
+          s.nila.vx *= s.nila.friction;
+          if (Math.abs(s.nila.vx) < 0.1) s.nila.vx = 0;
+        }
+        if (inputY !== 0) {
+          s.nila.vy += inputY * s.nila.accel;
+          s.nila.vy = Math.max(-maxSpd, Math.min(maxSpd, s.nila.vy));
+        } else {
+          s.nila.vy *= s.nila.friction;
+          if (Math.abs(s.nila.vy) < 0.1) s.nila.vy = 0;
+        }
+        
+        s.nila.x += s.nila.vx;
+        s.nila.y += s.nila.vy;
+        
+        const scene = SCENES[gameState.currentScene];
+        const maxX = scene ? scene.width - 50 : 1230;
+        s.nila.x = Math.max(20, Math.min(maxX, s.nila.x));
+        s.nila.y = Math.max(300, Math.min(620, s.nila.y));
+        
+        s.nila.isWalking = Math.abs(s.nila.vx) > 0.3 || Math.abs(s.nila.vy) > 0.3;
+        if (s.nila.isWalking) {
+          s.nila.animFrame += s.nila.isRunning ? 0.25 : 0.15;
+          if (s.frameCount % 12 === 0) sfx('step');
+          if (s.frameCount % 2 === 0) {
+            s.trailParticles.push(new Particle(s.nila.x + 18, s.nila.y + s.nila.height, '#8a6bbf', {
+              vx: (Math.random()-0.5)*0.5, vy: -Math.random()*0.5-0.3,
+              size: Math.random()*2+1, life: 0.6, decay: 0.02, glow: true, shape: 'circle', gravity: false, friction: 0.99
+            }));
+          }
+        }
+        
+        if (scene) {
+          const targetX = Math.max(0, Math.min(scene.width - 1280, s.nila.x - 640));
+          s.cameraX += (targetX - s.cameraX) * 0.08;
+        }
+        
+        nilaPosRef.current = { x: s.nila.x, y: s.nila.y };
+      }
+      
+      s.particles = s.particles.filter(p => { p.update(); return p.life > 0; });
+      s.trailParticles = s.trailParticles.filter(p => { p.update(); return p.life > 0; });
+      s.bgParticles.forEach(p => {
+        p.x += p.vx; p.y += p.vy; p.phase += 0.02;
+        if (p.x < 0) p.x = 1280; if (p.x > 1280) p.x = 0;
+        if (p.y < 0) p.y = 720; if (p.y > 720) p.y = 0;
+      });
+      
+      if (gameState.echoMode && s.frameCount % 3 === 0) {
+        s.particles.push(new Particle(Math.random()*1280, Math.random()*720, '#00f0ff', {
+          vx: (Math.random()-0.5)*0.5, vy: -Math.random()*0.5-0.2,
+          size: Math.random()*2+1, life: 1, decay: 0.008, glow: true, shape: 'circle', gravity: false, friction: 0.99
+        }));
+      }
+      
+      ctx.clearRect(0, 0, 1280, 720);
+      
+      s.bgParticles.forEach(p => {
+        ctx.globalAlpha = p.opacity * (0.5 + Math.sin(p.phase)*0.5);
+        ctx.fillStyle = p.color;
+        ctx.shadowBlur = 8; ctx.shadowColor = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+      });
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      
+      const scene = SCENES[gameState.currentScene];
+      if (scene) {
+        ctx.save();
+        ctx.translate(-s.cameraX, 0);
+        drawSceneBackground(ctx, gameState.currentScene, s.frameCount);
+        ctx.restore();
+        
+        scene.objects.forEach(obj => {
+          if (obj.echoOnly && !gameState.echoMode) return;
+          drawObject(ctx, obj, s.cameraX, s.frameCount);
+        });
+        
+        scene.npcs.forEach(npc => {
+          if (npc.echoOnly && !gameState.echoMode) return;
+          drawNPC(ctx, npc, s.cameraX, s.frameCount);
+        });
+      }
+      
+      s.trailParticles.forEach(p => p.draw(ctx));
+      drawNila(ctx, s.nila, s.cameraX, s.frameCount, gameState.echoMode);
+      s.particles.forEach(p => p.draw(ctx));
+      
+      if (gameState.echoMode) {
+        ctx.fillStyle = 'rgba(0,50,150,0.08)';
+        ctx.fillRect(0, 0, 1280, 720);
+        ctx.fillStyle = 'rgba(0,240,255,0.03)';
+        for (let i = 0; i < 720; i += 4) ctx.fillRect(0, i, 1280, 2);
+      }
+      
+      const vig = ctx.createRadialGradient(640, 360, 200, 640, 360, 700);
+      vig.addColorStop(0, 'rgba(0,0,0,0)');
+      vig.addColorStop(1, 'rgba(0,0,0,0.6)');
+      ctx.fillStyle = vig;
+      ctx.fillRect(0, 0, 1280, 720);
+      
+      if (!gameState.dialogueActive && gameState.canMove && scene) {
+        let target = null;
+        for (let npc of scene.npcs) {
+          if (npc.echoOnly && !gameState.echoMode) continue;
+          const dist = Math.hypot(s.nila.x - (npc.x+20), s.nila.y - (npc.y+40));
+          if (dist < 80) { target = {x: npc.x - s.cameraX + 20, y: npc.y - 30, text: '[E] ' + npc.name}; break; }
+        }
+        if (!target) {
+          for (let obj of scene.objects) {
+            if (obj.echoOnly && !gameState.echoMode) continue;
+            const dist = Math.hypot(s.nila.x - (obj.x+obj.w/2), s.nila.y - (obj.y+obj.h/2));
+            if (dist < 80) { target = {x: obj.x - s.cameraX + obj.w/2, y: obj.y - 20, text: '[E] ' + obj.name}; break; }
+          }
+        }
+        if (target) {
+          ctx.fillStyle = 'rgba(212,175,55,0.95)';
+          ctx.font = 'bold 14px Inter'; ctx.textAlign = 'center';
+          ctx.shadowBlur = 10; ctx.shadowColor = '#d4af37';
+          ctx.fillText(target.text, target.x, target.y);
+          ctx.shadowBlur = 0; ctx.textAlign = 'left';
+        }
+      }
+      
+      animId = requestAnimationFrame(loop);
+    };
+    
+    loop();
+    return () => cancelAnimationFrame(animId);
+  }, [gameState.currentScene, gameState.canMove, gameState.dialogueActive, gameState.echoMode, keysRef, sfx]);
+  
+  return <canvas ref={canvasRef} className="game-canvas" width={1280} height={720} />;
+}
+
+// ============ DRAWING ============
+function drawSceneBackground(ctx, sceneName, frame) {
+  switch(sceneName) {
+    case 'home_arrival': case 'father_arrival': drawHomeExterior(ctx, frame); break;
+    case 'home_interior': case 'morning_home': drawHomeInterior(ctx, frame); break;
+    case 'street_to_school': case 'going_home': drawStreet(ctx, frame); break;
+    case 'school_yard': case 'patio_izabel': drawSchoolYard(ctx, frame); break;
+    case 'classroom': drawClassroom(ctx, frame); break;
+    case 'dinner': case 'confrontation': drawDinnerScene(ctx, frame); break;
+    case 'echo_prefeitura': drawCityHallEcho(ctx, frame); break;
+  }
+}
+
+function drawHomeExterior(ctx, frame) {
+  const sky = ctx.createLinearGradient(0,0,0,400);
+  sky.addColorStop(0,'#1a0a2e'); sky.addColorStop(1,'#4a2a5e');
+  ctx.fillStyle = sky; ctx.fillRect(0,0,2000,400);
+  for (let i = 0; i < 50; i++) {
+    const x = (i*137.5)%2000, y = (i*71.3)%300;
+    ctx.globalAlpha = 0.5+Math.sin(frame*0.05+i)*0.3;
+    ctx.fillStyle = '#fff'; ctx.fillRect(x,y,1.5,1.5);
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#f0e8c0'; ctx.shadowBlur = 40; ctx.shadowColor = '#f0e8c0';
+  ctx.beginPath(); ctx.arc(1100,100,40,0,Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.fillStyle = '#1a2a1a'; ctx.fillRect(0,550,2000,170);
+  ctx.fillStyle = '#3a2a1a'; ctx.fillRect(800,300,400,250);
+  ctx.fillStyle = '#5a1a1a';
+  ctx.beginPath(); ctx.moveTo(780,300); ctx.lineTo(1000,180); ctx.lineTo(1220,300); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#6a3a1a'; ctx.fillRect(950,400,80,150);
+  ctx.fillStyle = '#d4af37'; ctx.beginPath(); ctx.arc(1015,480,4,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#ffd700'; ctx.shadowBlur = 15; ctx.shadowColor = '#ffd700';
+  ctx.fillRect(840,350,70,60); ctx.fillRect(1090,350,70,60); ctx.shadowBlur = 0;
+  ctx.fillStyle = '#2a4a6a'; ctx.fillRect(1300,550,200,80);
+  ctx.fillStyle = '#4a8aaa'; ctx.fillRect(1310,560,180,60);
+  drawTree(ctx, 200, 400); drawTree(ctx, 1600, 420); drawTree(ctx, 1800, 400);
+}
+
+function drawTree(ctx, x, y) {
+  ctx.fillStyle = '#3a2a1a'; ctx.fillRect(x-8,y,16,150);
+  ctx.fillStyle = '#1a4a1a'; ctx.beginPath(); ctx.arc(x,y-20,50,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#2a5a2a'; ctx.beginPath(); ctx.arc(x-20,y,35,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+20,y,35,0,Math.PI*2); ctx.fill();
+}
+
+function drawHomeInterior(ctx, frame) {
+  const wall = ctx.createLinearGradient(0,0,0,400);
+  wall.addColorStop(0,'#4a3a2a'); wall.addColorStop(1,'#5a4a3a');
+  ctx.fillStyle = wall; ctx.fillRect(0,0,1400,400);
+  ctx.fillStyle = '#3a2a1a'; ctx.fillRect(0,400,1400,320);
+  ctx.strokeStyle = '#4a3a2a'; ctx.lineWidth = 2;
+  for (let i = 0; i < 20; i++) { ctx.beginPath(); ctx.moveTo(i*70,400); ctx.lineTo(i*70,720); ctx.stroke(); }
+  ctx.fillStyle = '#6a5a4a'; ctx.fillRect(550,80,200,150);
+  ctx.fillStyle = '#8a7a6a'; ctx.fillRect(560,90,180,130);
+  ctx.fillStyle = '#5a3a1a'; ctx.fillRect(600,450,300,100);
+  ctx.fillStyle = '#e0e0e0';
+  [650,750,850].forEach(x => { ctx.beginPath(); ctx.arc(x,500,20,0,Math.PI*2); ctx.fill(); });
+  ctx.fillStyle = '#f0e0c0'; ctx.fillRect(745,420,10,30);
+  ctx.fillStyle = '#ffaa00'; ctx.shadowBlur = 20; ctx.shadowColor = '#ffaa00';
+  const flicker = Math.sin(frame*0.2)*2;
+  ctx.beginPath(); ctx.arc(750,415+flicker,8,0,Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.fillStyle = 'rgba(255,170,0,0.05)'; ctx.beginPath(); ctx.arc(750,450,300,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#6a3a1a'; ctx.fillRect(1100,400,70,110);
+  ctx.fillStyle = '#d4af37'; ctx.beginPath(); ctx.arc(1155,460,3,0,Math.PI*2); ctx.fill();
+}
+
+function drawStreet(ctx, frame) {
+  const sky = ctx.createLinearGradient(0,0,0,400);
+  sky.addColorStop(0,'#2a1a3a'); sky.addColorStop(1,'#4a3060');
+  ctx.fillStyle = sky; ctx.fillRect(0,0,2400,400);
+  ctx.fillStyle = '#1a1a2e';
+  [0,300,600,1000,1400,1800,2100].forEach((x,i) => {
+    const h = 200+Math.sin(i)*50;
+    ctx.fillRect(x,400-h,250,h+200);
+  });
+  ctx.fillStyle = '#ffd700';
+  for (let b = 0; b < 7; b++) {
+    const bx = b*300;
+    for (let i = 0; i < 4; i++) {
+      for (let j = 0; j < 3; j++) {
+        if (Math.sin(b+i+j) > 0) {
+          ctx.globalAlpha = 0.3+Math.random()*0.5;
+          ctx.fillRect(bx+20+i*55,250+j*50,30,30);
+        }
+      }
+    }
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#2a2a3a'; ctx.fillRect(0,600,2400,120);
+  ctx.strokeStyle = '#4a4a5a'; ctx.lineWidth = 3;
+  ctx.setLineDash([30,20]);
+  ctx.beginPath(); ctx.moveTo(0,660); ctx.lineTo(2400,660); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#3a3a5a'; ctx.fillRect(1050,280,350,320);
+  ctx.fillStyle = '#4a4a6a'; ctx.fillRect(1070,300,310,300);
+  ctx.fillStyle = '#5a5a7a';
+  for (let i = 0; i < 6; i++) ctx.fillRect(1080+i*52,320,18,260);
+  ctx.fillStyle = '#d4af37'; ctx.font = 'bold 18px Cormorant Garamond'; ctx.textAlign = 'center';
+  ctx.fillText('PREFEITURA',1225,295); ctx.textAlign = 'left';
+  [200,800,1500,2100].forEach(x => {
+    ctx.fillStyle = '#4a4a5a'; ctx.fillRect(x,400,6,200);
+    ctx.fillStyle = 'rgba(255,215,0,0.3)'; ctx.shadowBlur = 30; ctx.shadowColor = '#ffd700';
+    ctx.beginPath(); ctx.arc(x+3,400,25,0,Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+  });
+}
+
+function drawSchoolYard(ctx, frame) {
+  const sky = ctx.createLinearGradient(0,0,0,350);
+  sky.addColorStop(0,'#1a2a4a'); sky.addColorStop(1,'#3a4a6a');
+  ctx.fillStyle = sky; ctx.fillRect(0,0,1800,350);
+  ctx.fillStyle = '#2a2a3a'; ctx.fillRect(0,200,1800,400);
+  ctx.fillStyle = '#4a6a8a';
+  for (let i = 0; i < 15; i++) {
+    ctx.fillRect(50+i*120,250,80,60);
+    ctx.fillRect(50+i*120,350,80,60);
+  }
+  ctx.fillStyle = '#3a2a1a'; ctx.fillRect(850,380,100,220);
+  ctx.fillStyle = '#2a3a2a'; ctx.fillRect(0,600,1800,120);
+  ctx.fillStyle = '#5a4a3a'; ctx.fillRect(750,400,300,50);
+  ctx.fillStyle = '#6a5a4a'; ctx.fillRect(760,410,280,30);
+  ctx.fillStyle = '#4a3a2a';
+  ctx.fillRect(650,520,150,15); ctx.fillRect(660,535,10,35); ctx.fillRect(780,535,10,35);
+  drawTree(ctx, 100, 400); drawTree(ctx, 1600, 420);
+}
+
+function drawClassroom(ctx, frame) {
+  ctx.fillStyle = '#4a4a5a'; ctx.fillRect(0,0,1400,400);
+  ctx.fillStyle = '#3a3a4a'; ctx.fillRect(0,400,1400,320);
+  ctx.fillStyle = '#1a3a1a'; ctx.fillRect(400,80,600,250);
+  ctx.strokeStyle = '#6a5a3a'; ctx.lineWidth = 8; ctx.strokeRect(400,80,600,250);
+  ctx.fillStyle = '#5a4a3a';
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 5; c++) ctx.fillRect(200+c*200,450+r*80,150,50);
+  }
+  ctx.fillStyle = '#6a5a4a'; ctx.fillRect(500,480,120,60);
+  ctx.fillStyle = '#ff6b6b';
+  [520,560,600].forEach(x => { ctx.beginPath(); ctx.arc(x,475,8,0,Math.PI*2); ctx.fill(); });
+  ctx.fillStyle = '#e0e0e0';
+  ctx.fillRect(510,490,25,30); ctx.fillRect(545,490,25,30); ctx.fillRect(580,490,25,30);
+  ctx.fillStyle = 'rgba(255,215,0,0.15)'; ctx.beginPath(); ctx.arc(560,510,60,0,Math.PI*2); ctx.fill();
+}
+
+function drawDinnerScene(ctx, frame) {
+  ctx.fillStyle = '#2a1a1a'; ctx.fillRect(0,0,1200,720);
+  const wall = ctx.createLinearGradient(0,0,0,400);
+  wall.addColorStop(0,'#3a2a2a'); wall.addColorStop(1,'#4a3a3a');
+  ctx.fillStyle = wall; ctx.fillRect(0,0,1200,400);
+  ctx.fillStyle = '#5a4a3a'; ctx.fillRect(500,50,200,150);
+  ctx.fillStyle = '#6a5a4a'; ctx.fillRect(510,60,180,130);
+  ctx.fillStyle = '#3a2a1a'; ctx.fillRect(0,400,1200,320);
+  ctx.fillStyle = '#4a3020'; ctx.fillRect(300,450,600,200);
+  ctx.fillStyle = '#f0f0e0'; ctx.fillRect(310,455,580,190);
+  ctx.fillStyle = '#e0e0e0';
+  [450,600,750].forEach(x => { ctx.beginPath(); ctx.arc(x,530,30,0,Math.PI*2); ctx.fill(); });
+  ctx.fillStyle = '#f0e0c0'; ctx.fillRect(595,470,10,40);
+  ctx.fillStyle = '#ffaa00'; ctx.shadowBlur = 30; ctx.shadowColor = '#ffaa00';
+  const f = Math.sin(frame*0.15)*3;
+  ctx.beginPath(); ctx.arc(600,465+f,10,0,Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.fillStyle = 'rgba(255,170,0,0.08)'; ctx.beginPath(); ctx.arc(600,500,350,0,Math.PI*2); ctx.fill();
+}
+
+function drawCityHallEcho(ctx, frame) {
+  ctx.fillStyle = 'rgba(0,30,80,0.4)'; ctx.fillRect(0,0,1400,720);
+  ctx.fillStyle = '#1a2a3a'; ctx.fillRect(0,0,1400,720);
+  ctx.fillStyle = '#2a3a4a'; ctx.fillRect(0,550,1400,170);
+  ctx.strokeStyle = '#3a4a5a'; ctx.lineWidth = 1;
+  for (let i = 0; i < 25; i++) { ctx.beginPath(); ctx.moveTo(i*60,550); ctx.lineTo(i*60,720); ctx.stroke(); }
+  ctx.fillStyle = '#3a2a1a'; ctx.fillRect(600,400,300,150);
+  ctx.fillStyle = '#f0f0e0';
+  [620,680,740,800].forEach(x => ctx.fillRect(x,420,40,30));
+  ctx.fillStyle = 'rgba(0,240,255,0.9)'; ctx.font = 'bold 28px Cormorant Garamond'; ctx.textAlign = 'center';
+  ctx.shadowBlur = 20; ctx.shadowColor = '#00f0ff';
+  ctx.fillText('6 DE NOVEMBRO — 23:47', 700, 100); ctx.shadowBlur = 0; ctx.textAlign = 'left';
+  for (let i = 0; i < 30; i++) {
+    const x = (Math.sin(frame*0.008+i)*0.5+0.5)*1400;
+    const y = (Math.cos(frame*0.012+i)*0.5+0.5)*720;
+    ctx.fillStyle = `rgba(0,240,255,${0.15+Math.sin(frame*0.05+i)*0.1})`;
+    ctx.beginPath(); ctx.arc(x,y,2+Math.sin(frame*0.05+i),0,Math.PI*2); ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(0,240,255,0.02)';
+  for (let i = 0; i < 720; i += 3) ctx.fillRect(0,i,1400,1);
+}
+
+function drawObject(ctx, obj, camX, frame) {
+  const x = obj.x - camX, y = obj.y;
+  const pulse = Math.sin(frame*0.1)*0.3+0.7;
+  if (obj.type === 'clue') {
+    ctx.fillStyle = `rgba(212,175,55,${0.2*pulse})`;
+    ctx.beginPath(); ctx.arc(x+obj.w/2,y+obj.h/2,40,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#d4af37'; ctx.shadowBlur = 15*pulse; ctx.shadowColor = '#d4af37';
+    if (obj.id === 'paper') {
+      ctx.fillStyle = '#f0f0e0'; ctx.fillRect(x,y,obj.w,obj.h);
+      ctx.fillStyle = '#333'; ctx.font = '6px monospace'; ctx.fillText('???',x+5,y+15);
+    } else if (obj.id === 'letter') {
+      ctx.fillStyle = '#f0e0c0'; ctx.fillRect(x,y,obj.w,obj.h);
+      ctx.strokeStyle = '#8a6a4a'; ctx.lineWidth = 1; ctx.strokeRect(x,y,obj.w,obj.h);
+    } else if (obj.id === 'memorial_table') {
+      ctx.fillStyle = '#6a5a4a'; ctx.fillRect(x,y,obj.w,obj.h);
+      ctx.fillStyle = '#e0e0e0';
+      ctx.fillRect(x+10,y+10,25,30); ctx.fillRect(x+45,y+10,25,30); ctx.fillRect(x+80,y+10,25,30);
+      ctx.fillStyle = '#ff6b6b';
+      [20,55,90].forEach(fx => { ctx.beginPath(); ctx.arc(x+fx,y+5,6,0,Math.PI*2); ctx.fill(); });
+    } else if (obj.id === 'echo_desk') {
+      ctx.fillStyle = '#3a2a1a'; ctx.fillRect(x,y,obj.w,obj.h);
+      ctx.fillStyle = '#f0f0e0';
+      for (let i = 0; i < 5; i++) ctx.fillRect(x+10+i*28,y+15,20,25);
+    }
+    ctx.shadowBlur = 0;
+  } else if (obj.type === 'trigger' || obj.type === 'npc_trigger') {
+    if (obj.id.includes('door')) {
+      ctx.fillStyle = '#6a3a1a'; ctx.fillRect(x,y,obj.w,obj.h);
+      ctx.fillStyle = '#d4af37'; ctx.beginPath(); ctx.arc(x+obj.w-15,y+obj.h/2,4,0,Math.PI*2); ctx.fill();
+    }
+  }
+}
+
+function drawNPC(ctx, npc, camX, frame) {
+  const x = npc.x - camX, y = npc.y;
+  ctx.save(); ctx.translate(x+20, y+40);
+  const bounce = Math.sin(frame*0.05+npc.x)*1.5;
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(0,36,18,5,0,0,Math.PI*2); ctx.fill();
+  let bodyColor = '#4a4a5a', hairColor = '#3a3a3a';
+  switch(npc.id) {
+    case 'anderson': case 'anderson_arrival': case 'anderson_dinner': case 'anderson_final': case 'echo_anderson':
+      bodyColor = '#2a2a3a'; hairColor = '#3a3a3a'; break;
+    case 'nina': case 'nina_dinner': bodyColor = '#8a4a6a'; hairColor = '#5a3020'; break;
+    case 'izabel': case 'izabel_walk': case 'izabel_scared': bodyColor = '#4a6a8a'; hairColor = '#2a1a1a'; break;
+    case 'diretor': bodyColor = '#3a3a4a'; hairColor = '#4a4a4a'; break;
+    case 'thalyta': bodyColor = '#6a4a4a'; hairColor = '#2a1a1a'; break;
+    case 'echo_perteson': bodyColor = '#1a1a2a'; hairColor = '#1a1a1a'; break;
+  }
+  if (npc.echoOnly) { ctx.globalAlpha = 0.7; ctx.shadowBlur = 20; ctx.shadowColor = '#00f0ff'; }
+  ctx.fillStyle = bodyColor;
+  ctx.fillRect(-10,20,8,22); ctx.fillRect(2,20,8,22);
+  const bodyGrad = ctx.createLinearGradient(-15,-10,15,20);
+  bodyGrad.addColorStop(0,bodyColor); bodyGrad.addColorStop(1,lighten(bodyColor,30));
+  ctx.fillStyle = bodyGrad; ctx.fillRect(-15,-10+bounce,30,35);
+  ctx.fillStyle = '#f0d0b0'; ctx.beginPath(); ctx.arc(0,-18+bounce,13,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = hairColor; ctx.beginPath(); ctx.arc(0,-21+bounce,15,Math.PI,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#333';
+  ctx.beginPath(); ctx.arc(-5,-19+bounce,2.5,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(5,-19+bounce,2.5,0,Math.PI*2); ctx.fill();
+  if (npc.emotion === 'suspicious' || npc.emotion === 'cold' || npc.emotion === 'angry') {
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-8,-22+bounce); ctx.lineTo(-2,-21+bounce); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(8,-22+bounce); ctx.lineTo(2,-21+bounce); ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(212,175,55,0.9)'; ctx.font = '12px Inter'; ctx.textAlign = 'center';
+  ctx.fillText(npc.name, 0, -45); ctx.textAlign = 'left';
+  ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.restore();
+}
+
+function drawNila(ctx, nila, camX, frame, echoMode) {
+  const x = nila.x - camX, y = nila.y;
+  ctx.save(); ctx.translate(x+nila.width/2, y+nila.height/2); ctx.scale(nila.facing, 1);
+  const bounce = nila.isWalking ? Math.sin(nila.animFrame)*3 : Math.sin(frame*0.05)*1;
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(0,36,18,5,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#2a2a4a';
+  const legOff = nila.isWalking ? Math.sin(nila.animFrame)*6 : 0;
+  ctx.fillRect(-10,20,8,22+legOff); ctx.fillRect(2,20,8,22-legOff);
+  const bodyGrad = ctx.createLinearGradient(-15,-10,15,20);
+  bodyGrad.addColorStop(0,'#6a4c93'); bodyGrad.addColorStop(1,'#8a6bbf');
+  ctx.fillStyle = bodyGrad; ctx.fillRect(-15,-10+bounce,30,35);
+  ctx.fillStyle = '#5a3c83';
+  const armSwing = nila.isWalking ? Math.sin(nila.animFrame)*15 : 0;
+  ctx.save(); ctx.translate(-15,-5+bounce); ctx.rotate(armSwing*Math.PI/180);
+  ctx.fillRect(-4,0,8,25); ctx.restore();
+  ctx.save(); ctx.translate(15,-5+bounce); ctx.rotate(-armSwing*Math.PI/180);
+  ctx.fillRect(-4,0,8,25); ctx.restore();
+  ctx.fillStyle = '#f0d0b0'; ctx.beginPath(); ctx.arc(0,-18+bounce,13,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#4a3060'; ctx.beginPath(); ctx.arc(0,-21+bounce,15,Math.PI,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#6a4c93'; ctx.lineWidth = 2;
+  for (let i = 0; i < 5; i++) {
+    const angle = Math.PI + (i/5)*Math.PI;
+    const flow = Math.sin(frame*0.08+i)*3;
+    const len = 12 + flow;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(angle)*15, -21+bounce+Math.sin(angle)*15);
+    ctx.lineTo(Math.cos(angle)*(15+len), -21+bounce+Math.sin(angle)*(15+len));
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#00f0ff'; ctx.shadowBlur = 8; ctx.shadowColor = '#00f0ff';
+  ctx.beginPath(); ctx.arc(5,-19+bounce,3,0,Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#8b6b4a'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(3,-12+bounce); ctx.lineTo(7,-12+bounce); ctx.stroke();
+  if (echoMode) {
+    ctx.strokeStyle = 'rgba(0,240,255,0.6)'; ctx.lineWidth = 2;
+    ctx.shadowBlur = 15; ctx.shadowColor = '#00f0ff';
+    ctx.beginPath(); ctx.arc(0,0,40+Math.sin(frame*0.1)*3,0,Math.PI*2); ctx.stroke(); ctx.shadowBlur = 0;
+  }
+  ctx.restore();
+}
+
+function lighten(c, a) {
+  const n = parseInt(c.replace('#',''), 16);
+  const r = Math.min(255, (n>>16)+a);
+  const g = Math.min(255, ((n>>8)&0xff)+a);
+  const b = Math.min(255, (n&0xff)+a);
+  return `rgb(${r},${g},${b})`;
+}
+
+// ============ MAIN APP ============
+function App() {
+  const [gameStarted, setGameStarted] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [currentScene, setCurrentScene] = useState('home_arrival');
+  const [clues, setClues] = useState([]);
+  const [trust, setTrust] = useState(50);
+  const [suspicion, setSuspicion] = useState(0);
+  const [echoMode, setEchoMode] = useState(false);
+  const [dialogueActive, setDialogueActive] = useState(false);
+  const [canMove, setCanMove] = useState(true);
+  const [currentDialogue, setCurrentDialogue] = useState(null);
+  const [dialogueIndex, setDialogueIndex] = useState(0);
+  const [dialogueText, setDialogueText] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [dialogueChoices, setDialogueChoices] = useState(null);
+  const [notification, setNotification] = useState(null);
+  const [chapterTitle, setChapterTitle] = useState(null);
+  const [ending, setEnding] = useState(null);
+  const [choicesMade, setChoicesMade] = useState([]);
+  const [interactionHint, setInteractionHint] = useState(null);
+  
+  const { sfx } = useAudio();
+  const keysRef = useInput();
+  const emitRef = useRef(null);
+  const nilaPosRef = useRef({x: 200, y: 520});
+  const dialogueCallbackRef = useRef(null);
+  const typingIntervalRef = useRef(null);
+  
+  const gameState = useMemo(() => ({
+    currentScene, clues, trust, suspicion, echoMode, dialogueActive, canMove, ending
+  }), [currentScene, clues, trust, suspicion, echoMode, dialogueActive, canMove, ending]);
+  
+  const showNotification = useCallback((msg) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(null), 3500);
+  }, []);
+  
+  const showChapterTitle = useCallback((num, text) => {
+    setChapterTitle({num, text});
+    setTimeout(() => setChapterTitle(null), 4000);
+  }, []);
+  
+  const showInteractionHint = useCallback((text) => {
+    setInteractionHint(text);
+    setTimeout(() => setInteractionHint(null), 3000);
+  }, []);
+  
+  const typeText = useCallback((fullText, callback) => {
+    setIsTyping(true);
+    setDialogueText('');
+    let i = 0;
+    if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+    typingIntervalRef.current = setInterval(() => {
+      if (i < fullText.length) {
+        setDialogueText(prev => prev + fullText[i]);
+        if (i % 3 === 0) sfx('dialogue');
+        i++;
+      } else {
+        clearInterval(typingIntervalRef.current);
+        typingIntervalRef.current = null;
+        setIsTyping(false);
+        if (callback) callback();
+      }
+    }, 25);
+  }, [sfx]);
+  
+  const changeScene = useCallback((sceneName) => {
+    if (!SCENES[sceneName]) return;
+    setCurrentScene(sceneName);
+    const scene = SCENES[sceneName];
+    showChapterTitle(`Capítulo ${scene.chapter}`, scene.name);
+    
+    if (scene.forceEcho) {
+      setEchoMode(true);
+      sfx('echo');
+    }
+    
+    setTimeout(() => {
+      if (scene.introDialogue) {
+        const cb = scene.showDinnerChoice ? () => showDinnerChoice() : 
+                   scene.showFinalChoice ? () => showFinalChoice() : null;
+        startDialogue(scene.introDialogue, cb);
+      } else if (scene.showDinnerChoice) {
+        setTimeout(() => showDinnerChoice(), 500);
+      } else if (scene.showFinalChoice) {
+        setTimeout(() => showFinalChoice(), 500);
+      }
+    }, 1500);
+  }, [sfx, showChapterTitle]);
+  
+  const startDialogue = useCallback((lines, callback = null) => {
+    setCurrentDialogue(lines);
+    setDialogueIndex(0);
+    setDialogueChoices(null);
+    setDialogueActive(true);
+    setCanMove(false);
+    dialogueCallbackRef.current = callback;
+    
+    if (lines[0]) {
+      typeText(lines[0].t);
+    }
+  }, [typeText]);
+  
+  const advanceDialogue = useCallback(() => {
+    if (!currentDialogue) return;
+    if (dialogueChoices) return;
+    
+    if (isTyping) {
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
+        typingIntervalRef.current = null;
+      }
+      setDialogueText(currentDialogue[dialogueIndex].t);
+      setIsTyping(false);
+      return;
+    }
+    
+    const nextIndex = dialogueIndex + 1;
+    if (nextIndex >= currentDialogue.length) {
+      setDialogueActive(false);
+      setCurrentDialogue(null);
+      setDialogueIndex(0);
+      setDialogueText('');
+      if (dialogueCallbackRef.current) {
+        const cb = dialogueCallbackRef.current;
+        dialogueCallbackRef.current = null;
+        cb();
+      } else {
+        setCanMove(true);
+      }
+    } else {
+      setDialogueIndex(nextIndex);
+      typeText(currentDialogue[nextIndex].t);
+    }
+  }, [currentDialogue, dialogueIndex, dialogueChoices, isTyping, typeText]);
+  
+  const showDinnerChoice = useCallback(() => {
+    setDialogueChoices([
+      {
+        text: '🔍 "Pai, você conhece o investigador Perteson? Vi um homem parecido com ele do seu lado na prefeitura."',
+        effect: 'Suspeita +25%',
+        action: () => {
+          setSuspicion(s => Math.min(100, s + 25));
+          setChoicesMade(c => [...c, 'direct_question']);
+          sfx('tension');
+          startDialogue([
+            {s:'Anderson',t:'...Ah, o Perteson. Sim, ele cuida da segurança da cidade.'},
+            {s:'Anderson',t:'O diretor só quis ser cuidadoso, filha. Não se preocupe.'},
+            {s:'Nina',t:'E você, Nila, gostou da comida?'},
+            {s:'',t:'(O clima ficou tenso. Seu pai está escondendo algo.)',narration:true}
+          ], afterDinner);
+        }
+      },
+      {
+        text: '😊 "Foi um dia normal, nada demais. A comida está ótima, mãe."',
+        effect: 'Suspeita +0%',
+        action: () => {
+          setChoicesMade(c => [...c, 'pretend_normal']);
+          startDialogue([
+            {s:'Anderson',t:'Que bom, filha! Me conta mais sobre a escola amanhã.'},
+            {s:'Nina',t:'Fico feliz! Vou lavar os pratos, pode ir pro quarto.'}
+          ], afterDinner);
+        }
+      },
+      {
+        text: '😰 "Izabel me contou sobre o dia 6 de novembro... sobre os desaparecimentos."',
+        effect: 'Suspeita +40% | Confiança -10',
+        action: () => {
+          setSuspicion(s => Math.min(100, s + 40));
+          setTrust(t => Math.max(0, t - 10));
+          setChoicesMade(c => [...c, 'confront_early']);
+          sfx('tension'); sfx('heartbeat');
+          startDialogue([
+            {s:'',t:'O garfo do seu pai para no ar. O sorriso desaparece.',narration:true},
+            {s:'Anderson',t:'...Onde você ouviu isso, Nila?'},
+            {s:'Anderson',t:'Escute. Essas coisas são apenas boatos.'},
+            {s:'Nina',t:'Anderson, calma... Nila, vai pro quarto, querida.'},
+            {s:'',t:'(Seus pais estão com medo. Eles sabem de algo...)',narration:true}
+          ], afterDinner);
+        }
+      }
+    ]);
+  }, [sfx, startDialogue]);
+  
+  const showFinalChoice = useCallback(() => {
+    setDialogueChoices([
+      {
+        text: '💔 "Eu vou te denunciar. Você vai pagar pelo que fez."',
+        effect: 'Final: Justiça',
+        action: () => { setEnding('justice'); setChoicesMade(c => [...c, 'denounce']); }
+      },
+      {
+        text: '😢 "Por que, pai? Por que você fez isso?"',
+        effect: 'Final: Confronto Emocional',
+        action: () => { setEnding('emotional'); setChoicesMade(c => [...c, 'confront_emotional']); }
+      },
+      {
+        text: '🤫 "Eu vou guardar seu segredo. Mas você me deve uma."',
+        effect: 'Final: Cumplicidade',
+        action: () => { setEnding('accomplice'); setChoicesMade(c => [...c, 'protect']); }
+      }
+    ]);
+  }, []);
+  
+  const afterDinner = useCallback(() => {
+    setTimeout(() => {
+      if (suspicion >= 60 || choicesMade.includes('confront_early')) {
+        changeScene('confrontation');
+      } else {
+        startDialogue([
+          {s:'',t:'Nila vai pro quarto. Mas não consegue dormir.',narration:true},
+          {s:'',t:'Ela pensa em tudo que aconteceu. Em Izabel. No pai. No 6 de novembro.',narration:true},
+          {s:'Nila',t:'(Pensando) Preciso ver com meus próprios olhos. Preciso voltar à prefeitura.'},
+          {s:'',t:'Ela espera todos dormirem. E sai.',narration:true}
+        ], () => changeScene('echo_prefeitura'));
+      }
+    }, 500);
+  }, [suspicion, choicesMade, changeScene, startDialogue]);
+  
+  const handleChoice = useCallback((choice) => {
+    setDialogueChoices(null);
+    choice.action();
+  }, []);
+  
+  const handleInteract = useCallback(() => {
+    if (dialogueActive || !canMove) return;
+    const scene = SCENES[currentScene];
+    if (!scene) return;
+    
+    const nila = nilaPosRef.current;
+    
+    for (let npc of scene.npcs) {
+      if (npc.echoOnly && !echoMode) continue;
+      const dist = Math.hypot(nila.x - (npc.x+20), nila.y - (npc.y+40));
+      if (dist < 80 && npc.dialogue && DIALOGUES[npc.dialogue]) {
+        sfx('interact');
+        startDialogue(DIALOGUES[npc.dialogue]);
+        return;
+      }
+    }
+    
+    for (let obj of scene.objects) {
+      if (obj.echoOnly && !echoMode) continue;
+      const dist = Math.hypot(nila.x - (obj.x+obj.w/2), nila.y - (obj.y+obj.h/2));
+      if (dist < 80) {
+        sfx('interact');
+        if (obj.type === 'clue' && obj.clue && !clues.includes(obj.clue)) {
+          setClues(c => [...c, obj.clue]);
+          showNotification('📋 Nova pista: ' + obj.name);
+          sfx('clue');
+          if (emitRef.current) {
+            emitRef.current(obj.x+obj.w/2, obj.y+obj.h/2, '#d4af37', 40, {shape:'star',glow:true,trail:true,size:5,decay:0.01});
+          }
+        }
+        if (obj.dialogue) {
+          if (Array.isArray(obj.dialogue)) startDialogue(obj.dialogue);
+          else if (DIALOGUES[obj.dialogue]) startDialogue(DIALOGUES[obj.dialogue]);
+        } else if (obj.nextScene) {
+          changeScene(obj.nextScene);
+        }
+        return;
+      }
+    }
+    
+    showInteractionHint('Aproxime-se mais para interagir');
+  }, [dialogueActive, canMove, currentScene, echoMode, clues, sfx, startDialogue, changeScene, showNotification, showInteractionHint]);
+  
+  const toggleEcho = useCallback(() => {
+    if (dialogueActive || currentScene === 'echo_prefeitura') return;
+    setEchoMode(e => !e);
+    sfx('echo');
+  }, [dialogueActive, currentScene, sfx]);
+  
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === ' ' && dialogueActive) {
+        e.preventDefault();
+        advanceDialogue();
+      }
+      if (e.key.toLowerCase() === 'q') toggleEcho();
+      if (e.key.toLowerCase() === 'e' && canMove && !dialogueActive) handleInteract();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [dialogueActive, advanceDialogue, toggleEcho, canMove, handleInteract]);
+  
+  const handleStart = useCallback(() => {
+    setGameStarted(true);
+    setShowTutorial(true);
+  }, []);
+  
+  const handleTutorialComplete = useCallback(() => {
+    setShowTutorial(false);
+    changeScene('home_arrival');
+  }, [changeScene]);
+  
+  const handleRestart = useCallback(() => {
+    window.location.reload();
+  }, []);
+  
+  const contextValue = useMemo(() => ({ sfx }), [sfx]);
+  
+  const currentLine = currentDialogue && currentDialogue[dialogueIndex] ? currentDialogue[dialogueIndex] : null;
+  
+  return (
+    <GameContext.Provider value={contextValue}>
+      <div className="game-wrapper">
+        <GameCanvas 
+          gameState={gameState} 
+          keysRef={keysRef} 
+          sfx={sfx}
+          emitRef={emitRef}
+          nilaPosRef={nilaPosRef}
+          onInteract={handleInteract}
+          onEcho={toggleEcho}
+        />
+        
+        <div className="ui-layer">
+          {!gameStarted && <TitleScreen onStart={handleStart} />}
+          
+          {gameStarted && showTutorial && <Tutorial onComplete={handleTutorialComplete} />}
+          
+          {gameStarted && !showTutorial && !ending && (
+            <>
+              <HUD 
+                clues={clues} 
+                trust={trust} 
+                suspicion={suspicion} 
+                chapter={SCENES[currentScene]?.name || ''} 
+                visible={gameStarted}
+              />
+              <EchoIndicator active={echoMode} />
+              <Notification message={notification} />
+              {chapterTitle && <ChapterTitle num={chapterTitle.num} text={chapterTitle.text} />}
+              <ControlsBar visible={gameStarted} />
+              <InteractionHint text={interactionHint} />
+              
+              {dialogueActive && currentLine && (
+                <DialogueBox
+                  speaker={currentLine.s || 'Nila'}
+                  text={dialogueText}
+                  narration={currentLine.narration}
+                  highlight={currentLine.highlight}
+                  onAdvance={advanceDialogue}
+                  choices={dialogueChoices}
+                  onChoice={handleChoice}
+                  isTyping={isTyping}
+                />
+              )}
+            </>
+          )}
+          
+          {ending && (
+            <EndScreen
+              ending={ending}
+              clues={clues}
+              trust={trust}
+              suspicion={suspicion}
+              choicesMade={choicesMade}
+              onRestart={handleRestart}
+            />
+          )}
+        </div>
+      </div>
+    </GameContext.Provider>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
